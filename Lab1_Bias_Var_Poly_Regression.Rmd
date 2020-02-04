@@ -193,7 +193,7 @@ poly.predict <- function(degree.vec,
                  x.test=x.test)
   
   # Name rows and columns
-  rownames(pred)  <- paste("TestCase",1:length(x.test),sep="")
+   rownames(pred)  <- paste("TestCase",1:length(x.test),sep="")
   colnames(pred)  <- paste("D",degree.vec,sep="")
   # Return
   return(pred)
@@ -219,6 +219,21 @@ Your final result will be three matrices. The first matrix **mat.pred.1** is the
 
 ```{r}
 # Solution goes here -----------
+mat.pred.1<-matrix(0,1000,5)
+mat.pred.2<-matrix(0,1000,5)
+y.test.mat<-matrix(0,1000,2)
+for (i in 1:1000) {
+  sim.data.train<-sim.training(x.test)
+  poly.predict.mat<-poly.predict(degree.vec = 1:5,
+                                 data = sim.data.train$data.train,
+                                 x.test = x.test)
+  mat.pred.1[i,]<-poly.predict.mat[1,]
+  mat.pred.2[i,]<-poly.predict.mat[2,]
+  y.test.mat[i,]<-sim.data.train$y.test
+}
+mat.pred.1[1:3,]
+mat.pred.2[1:3,]
+y.test.mat[1:3,]
 ```
 
 
@@ -241,6 +256,27 @@ After solving this problem, display the 6 vectors of interest.
 
 ```{r}
 # Solution goes here -----------
+var1<-c(0,0,0,0,0)
+var2<-c(0,0,0,0,0)
+sq_bias1<-c(0,0,0,0,0)
+sq_bias2<-c(0,0,0,0,0)
+mse1<-c(0,0,0,0,0)
+mse2<-c(0,0,0,0,0)
+
+for (i in 1:5) {
+  var1[i]<-var(mat.pred.1[,i])
+  var2[i]<-var(mat.pred.2[,i])
+  sq_bias1[i]<-(mean(mat.pred.1[,i])-true.f(10))^2
+  sq_bias2[i]<-(mean(mat.pred.2[,i])-true.f(16))^2
+  mse1[i]<-sum((y.test.mat[,1]-mat.pred.1[,i])^2)/1000
+  mse2[i]<-sum((y.test.mat[,2]-mat.pred.2[,i])^2)/1000
+}
+var1
+var2
+sq_bias1
+sq_bias2
+mse1
+mse2
 ```
 
 ## Task 3
@@ -250,6 +286,41 @@ The third task requires students to construct a plots showing $MSE(x_0)$, $\text
 
 ```{r}
 # Solution goes here -----------
+# when x_0 = 10
+ylim1<-c(min(var1,sq_bias1,mse1),max(var1,sq_bias1,mse1))
+plot(1:5,
+     mse1,
+     main = "Plot as function of poly degrees (x0=10)",
+     col = "grey",
+     ylim = ylim1,
+     type = "l",
+     lwd = 2,
+     ylab = "",
+     xlab = "Degree")
+lines(1:5,var1,lwd=2,col="orange")
+lines(1:5,sq_bias1,lwd=2,col="purple")
+legend("topleft",
+       legend=c("MSE","Variance","Squared Bias"),
+       fill=c("grey","orange","purple"),
+       cex=.5)
+
+# when x_0 = 16
+ylim2<-c(min(var2,sq_bias2,mse2),max(var2,sq_bias2,mse2))
+plot(1:5,
+     mse2,
+     main = "Plot as function of poly degrees (x0=16)",
+     col = "grey",
+     ylim = ylim2,
+     type = "l",
+     lwd = 2,
+     ylab = "",
+     xlab = "Degree")
+lines(1:5,var2,lwd=2,col="orange")
+lines(1:5,sq_bias2,lwd=2,col="purple")
+legend("topleft",
+       legend=c("MSE","Variance","Squared Bias"),
+       fill=c("grey","orange","purple"),
+       cex=.5)
 ```
 
 

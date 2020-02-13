@@ -1,0 +1,180 @@
+---
+title: "HW1"
+author: "Yunbo Zhu"
+date: "2/11/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Problem 1
+
+1.
+```{r}
+set.seed(0)
+
+# Define full sample size and simulate feature x
+n.full <- 100 
+x <- runif(n.full,0,10)
+
+# Define linear model as y=1+x+error
+y <- 1+0.5*x + rnorm(n.full)
+
+data.full <- data.frame(x=x,y=y)
+#plot(x,y)
+
+# Split data
+n.test <- 50
+index.test <- sample(1:n.full,n.test)
+data.train  <- data.full[-index.test,]
+data.test  <- data.full[index.test,]
+
+# Fit linear, quadratic and cubic models
+linear.train <- lm(y~x,data=data.train)
+quad.train <- lm(y~poly(x,degree = 2,raw=T),data=data.train)
+cubic.train<- lm(y~poly(x,degree = 3,raw=T),data=data.train)
+
+# Fit linear, quadratic and cubic models
+linear.predict.train <- predict(linear.train,newdata=data.train)
+quad.predict.train <- predict(quad.train,newdata=data.train)
+cubic.predict.train <- predict(cubic.train,newdata=data.train)
+
+# Training error and test error 
+train.err.linear = mean((data.train$y-linear.predict.train)^2)
+train.err.linear 
+train.err.quad = mean((data.train$y-quad.predict.train)^2)
+train.err.quad
+train.err.cubic = mean((data.train$y-cubic.predict.train)^2)
+train.err.cubic
+```
+2.
+```{r}
+linear.predict.test <-  predict(linear.train,newdata=data.test)
+quad.predict.test <-  predict(quad.train,newdata=data.test)
+cubic.predict.test <-  predict(cubic.train,newdata=data.test)
+
+test.err.linear = mean((data.test$y-linear.predict.test)^2)
+test.err.quad = mean((data.test$y-quad.predict.test)^2)
+test.err.cubic = mean((data.test$y-cubic.predict.test)^2)
+test.err.linear
+test.err.quad
+test.err.cubic
+```
+3.
+```{r}
+model = c(1,2,3)
+train.err = c(train.err.linear,train.err.quad,train.err.cubic)
+test.err = c(test.err.linear,test.err.quad,test.err.cubic)
+library(ggplot2)
+err.plot = ggplot()+geom_line(aes(model,train.err,color = 'red'))+geom_line(aes(model,test.err,color ='blue'))+
+  scale_color_discrete(name = "Type of Error" ,labels = c("Test Error","Train Error"))+
+  labs(title = "error as a function of model complexity", x = "model degree", y = "error")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+err.plot
+```
+
+
+## Problem 2
+
+1. Maximum Likelihood Estimator: the MLE is the parameter which maximizes the likelihood (joint density) of the data i.e. $\hat{\theta}_{ML}=\arg\max_{\theta}l(\theta)$, the likelihood function is $l(\theta)=p(x|\theta)=\prod_{i=1}^{n}p(x_{i}|\theta)$. Since $\arg\underset{y}{\operatorname{max}}log(f(y)) = \arg\underset{y}{\operatorname{max}}f(y)$, and by logarithm trick $log(\prod_ifi) = \sum_ilog(f_i)$, we can get $\hat{\theta}_{ML}=\arg\underset{\theta}{\operatorname{max}}\sum_{i=1}^{n}p(x_{x_{i}}|\theta)$. To get the maxima, the parameter must meet the maximality criterion $0=\sum_{i=1}^{n}\nabla_{\theta}logp(x_{i}|\theta)$
+
+2. derive the ML estimator for $\mu$
+
+\begin{center}
+$0=\sum_{i=1}^{n}\nabla_{\mu}ln((\frac{\gamma}{\mu})^{\gamma}\frac{x^{\gamma-1}}{\Gamma(\gamma)}exp(-\frac{\gamma x}{\mu}))$
+
+$0=\sum_{i=1}^{n}\nabla_{\mu}(\gamma ln(\frac{\gamma}{\mu})+(\gamma-1)ln(x_{i})-ln\Gamma(\gamma)-\frac{\gamma}{\mu}x_{i})$
+
+$\sum_{i=1}^{n}(-\frac{\gamma}{\mu}+\frac{\gamma}{\mu ^{2}}x_{i})=0$
+
+$-\frac{n\gamma}{\mu}+\frac{\gamma}{\mu ^{2}}\sum_{i=1}^{n}x_{i}=0$
+
+$\hat{\mu}=\frac{1}{n}\sum_{i=1}^{n}x_{i}$
+\end{center}
+
+3. instead deriving the formula, show equation to get $\hat{\gamma}$
+
+\begin{center}
+$0=\sum_{i=1}^{n}\nabla_{\gamma}ln((\frac{\gamma}{\mu})^{\gamma}\frac{x^{\gamma-1}}{\Gamma(\gamma)}exp(-\frac{\gamma x}{\mu}))$
+
+$0=\sum_{i=1}^{n}\nabla_{\gamma}(\gamma ln(\frac{\gamma}{\mu})+(\gamma-1)ln(x_{i})-ln\Gamma(\gamma)-\frac{\gamma}{\mu}x_{i})$
+
+$\sum_{i=1}^{n}(ln(\frac{\gamma}{\mu})+\gamma*\frac{\mu}{\gamma}*\frac{1}{\mu}+ln(x_{i})-\phi(\gamma)-\frac{x_{i}}{\mu})=0$
+
+$\sum_{i=1}^{n}(ln(\frac{x_{i}\hat{\gamma}}{\mu})+1-\phi(\gamma)-\frac{x_{i}}{\mu})=0$
+
+$\sum_{i=1}^{n}(ln(\frac{x_{i}\hat{\gamma}}{\mu})-(\frac{x_{i}}{\mu}-1)-\phi(\gamma))=0$
+\end{center}
+
+## Problem 3
+
+we want to show that $f_{0}$ defined by $f_{0}=\arg\underset{y\in[K]}{\operatorname{max}}P(y|x)$ minimize $R(f)$
+
+$R(f|x):=\underset{y\in[K]}{\operatorname{\sum}}L^{0-1}(y,f(x))P(y|x)$ and $R(f)=\int_{R^{d}}R(f|x)p(x)dx$
+
+if $f_{0}$ minimize conditional risks $R(f|x)$, then this $f_{0}$minimize $R(f)$ as well
+
+\begin{center}
+$R(f|x):=\underset{y\in[K]}{\operatorname{\sum}}L^{0-1}(y,f(x))P(y|x)$
+
+$=P(y=f(x)|x)\times \underset{0}{\operatorname{L^{0-1}(f(x),f(x))}}$+
+$\underset{k\neq f(x)}{\operatorname{\sum}}P(k|x)*\underset{1}{\operatorname{L^{0-1}(f(x),k)}}$
+
+$=\underset{k\neq f(x)}{\operatorname{\sum}}P(k|x)$
+\end{center}
+
+since $P(k|x)$ sums to 1 over all k, so, $R(f|x)=1-P(f(x)|x)$, that is, $f_{0}$ maximizes $P(f(x)|x)$, hence minimize $1-P(f(x)|x)$ at each x.
+
+In summary, $f_{0}=\arg\underset{f\in H}{\operatorname{min}}R(f|x)$ for all $x\in R^{d}$, and therefore $f_{0}=\arg\underset{f\in H}{\operatorname{min}}R(f)$
+
+## Problem 4
+
+1. Derive the posterior
+
+$\prod(\theta_{1},...,\theta_{K}|x_{1},...,x_{n})$ = 
+$\displaystyle \frac{likelihood*prior}{evidence}$ = 
+$a*\prod_{k=1}^{K}\theta_{k}^{n_{k}+\alpha_{k}-1}$
+
+where a is the normalizing constant
+
+2. Derive the Bayesian MAP
+
+$\hat{\theta}_{MAP}=\arg\underset{\theta}{\operatorname{max}}\prod(\theta_{1},...,\theta_{K}|x_{1},...,x_{n})$ where $\theta$ = $(\theta_{1},...,\theta_{K})$
+
+drop the normalizing constant, and by logarithm trick, $\hat{\theta}_{MAP}=\arg\underset{\theta}{\operatorname{max}}\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)log(\theta_{k})$
+
+by maximizing criterion: $0=\nabla_{\theta_{k}}\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)log(\theta_{k})$
+
+by lagrangiam multiplier, we want to maximize function f(x) with constraint g(x) = a, we optimise f(x) - $\lambda$(g(x) - a), therefore, in the case of Dirichlet, since $\sum_{k=1}^{K}\theta_{k}=1$, thus
+
+\begin{center}
+$f(\theta)=log(L(\theta))=\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)log(\theta_{k})$
+
+$g(\theta)=\sum_{k=1}^{K}\theta_{k}, a=1$
+
+optimise the lagrangian $\nabla_{\theta_{k}}\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)log(\theta_{k})-\lambda*(\sum_{k=1}^{K}\theta_{k}-1)=0$
+
+$\hat{\theta_{k}}=\frac{n_{k}+\alpha_{k}-1}{\lambda}$
+\end{center}
+
+replace the parameters with their estimates and optimise the lagrangian for lambda, 
+
+\begin{center}
+$0=\nabla_{\lambda}\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)log(\frac{n_{k}+\alpha_{k}-1}{\lambda})-\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)+\lambda$
+
+$\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)\times \frac{\lambda}{n_{k}+\alpha_{k}-1}\times(-\frac{n_{k}+\alpha_{k}-1}{\lambda^2})+\lambda=0$
+
+$-\sum_{k=1}^{K}\frac{n_{k}+\alpha_{k}-1}{\lambda}+1=0$
+
+$\lambda=\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)$
+
+$\hat{\theta_{k}}_{MAP}=\frac{n_{k}+\alpha_{k}-1}{\sum_{k=1}^{K}(n_{k}+\alpha_{k}-1)}$
+\end{center}
+
+3. Derive the "frequintist" MLE of parameters
+
+Similar to above, $\hat{\theta}_{ML}=\arg\underset{\theta}{\operatorname{max}}l(\theta)=\arg\underset{\theta}{\operatorname{max}}\prod_{k=1}^{K}\theta_{k}^{n_{k}}$, therefore to get MLE, $0=\nabla_{\theta_{k}}\sum_{k=1}^{K}n_{k}log(\theta_{k})$
+
+by lagrangian multiplier technique, $\hat{\theta_{k}}_{ML}=\frac{n_{k}}{\sum_{k=1}^{K}n_{k}}$

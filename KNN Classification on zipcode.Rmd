@@ -1,0 +1,215 @@
+---
+title: 'Digits and kNN'
+author: "Yunbo Zhu"
+date: "February 10, 2020"
+output:
+  pdf_document: default
+---
+
+# Section I: Objective
+
+The objective of this lab is to write own kNN-classification algorithm applied to a binary response. Their final kNN-classifier should predict several test cases based on training datamatrix $X$ (having $p>0$ features), and a training response vector $Y$.  I will then apply the kNN-function to the famous `ZIPcode` dataset described in the book (ESL). More specifically, the classifier will predict if a handwritten digit is a `3` or `5`, based on the digit's pixels represented as grey scale values.
+
+**Note:** The `blackbox` kNN-function from the R library **class** (or similar) will run faster than the manual kNN-function written in this lab because it was written in a lower level programming language.
+
+
+# Section II: Data Description and Exploratory Analysis
+
+A single image (or single handwritten digit) is represented by a vector of length $256=16\times 16$ pixels, where each pixel is numeric ranging from $[-1,1]$ (**Note:** $``-1=\text{white}"$ and $\ ``1=\text{black}"$). Each pixel of an image is a feature, therefore $p=256$. The text file **zip3.txt** contains 658 observations (or images) for handwritten `3's` and the text file **zip5.txt** contains 556 observations (or images) for handwritten `5's`. The observed features are represented by the columns of **zip.3** and **zip.5**, and hence the data matrix of features **X.full.zip** has dimension $(1214 \times 256)$.  The response vector **Y.full.zip** is categorical consisting of labels `Three` and `Five`.  
+
+```{r}
+### all images corresponding to digit "3"
+zip.3 <- read.table("zip3.txt", header=FALSE, sep=",")
+zip.3 <- as.matrix(zip.3)
+### all images corresponding to digit "5"
+zip.5 <- read.table("zip5.txt", header=FALSE, sep=",")
+zip.5 <- as.matrix(zip.5)
+### n.3 and n.5 are the total number of "3"s and "5"s, respectively. 
+n.3 <- length(zip.3[,1])
+n.5 <- length(zip.5[,1])
+### combine two data sets together 
+X.full.zip <-rbind(zip.3,zip.5)
+dim(X.full.zip)
+
+### define response (labels)
+Y.full.zip <- c(rep("Three",n.3),rep("Five",n.5))
+length(Y.full.zip)
+```
+
+The function **output.image()** allows us to visualize the data. The input is a vector of length 256. 
+
+```{r}
+output.image<-function(vector) {
+	digit<-matrix(vector, nrow=16, ncol=16)
+	#index= seq(from=1, to =16, by=1)
+	index= seq(from=16, to =1, by=-1)
+	sym_digit = digit[,index]
+	image(sym_digit, col= gray((8:0)/8), axes=FALSE)
+}
+```
+
+Visualize the first 25 images of 3's and 5's. 
+```{r}
+par(mfrow=c(5,5),mai=c(0.1,0.1,0.1,0.1))
+for(i in 1:25) {
+	output.image(zip.3[i,])
+}
+```
+
+```{r}
+par(mfrow=c(5,5),mai=c(0.1,0.1,0.1,0.1))
+for(i in 1:25) {
+  output.image(zip.5[i,])
+}
+```
+
+
+# Section III: Data-Splitting
+
+1) Firstly, randomly split **X.full.zip** and **Y.full.zip** into two a training set and a test set. The test set should be approximately 20\% of the full dataset.   
+
+```{r}
+index <- sample(1:nrow(X.full.zip),nrow(X.full.zip)*0.8,replace = FALSE)
+X.train.zip <- X.full.zip[index,]
+X.test.zip <- X.full.zip[-index,]
+Y.train.zip <- Y.full.zip[index]
+Y.test.zip <- Y.full.zip[-index]
+```
+
+# Section IV: Toy Data and 2-Feature kNN Function 
+
+First consider the toy data below, constructed from the famous **iris** dataset. The variables **Sepal.Length** \& **Sepal.Width** are the columns of feature matrix **X.example**. The dichotomous response **Y.example** takes on species labels **versicolor** \& **virginica**.
+
+
+```{r}
+# Create basic training data from iris
+X.example <- as.matrix(iris[51:150,1:2])
+Y.example <- as.character(iris[51:150,5])
+head(X.example,3)
+head(Y.example,3)
+```
+
+The function **KNN.decision()** classifies a single test case **x.test** using the kNN-classification algorithm. This function is slightly modified from the in-class example. Notice that the distance vector is hard coded and is applicable for **only** two features ($p=2$). Also notice that this function only classifies a single test case **x.test**.   
+
+```{r}
+# kNN function
+KNN.decision <- function(x.test,
+                         X.data,
+                         Y.data,
+                         K = 5) {
+  #n <- nrow(X.data)
+  dists.vec <- sqrt((x.test[1]- X.data[,1])^2 + (x.test[2]-X.data[,2])^2)
+  neighbors  <- order(dists.vec)[1:K]
+  neighb.dir <-  Y.data[neighbors]
+  choice     <- names(which.max(table(neighb.dir)))
+  return(choice)
+}
+```
+
+To see this function in action, evaluate **KNN.decision()** at the two test cases $x^t_{1}=\begin{pmatrix} 5.5 & 3.0 \end{pmatrix}$ \& $x^t_{2}=\begin{pmatrix} 7.5 & 3 \end{pmatrix}$,
+and plot the predicted values with the toy dataset. 
+
+```{r}
+# Evaluate kNN.decision() at x.test.1: 
+x.test.1 <- c(5.5,3.0)
+p1.choice <- KNN.decision(x.test=x.test.1,
+                          X.data=X.example,
+                          Y.data=Y.example,
+                          K=5)
+p1.choice
+
+# Evaluate kNN.decision() at x.test.2: 
+x.test.2 <- c(7.5,3)
+p2.choice <- KNN.decision(x.test=x.test.2,
+                          X.data=X.example,
+                          Y.data=Y.example,
+                          K=5)
+p2.choice
+
+# Plot X2 versus X1 with the test points
+plot(X.example[,1],
+     X.example[,2],
+     xlab="X1",
+     ylab="X2",
+     col=factor(Y.example))
+col1 <- ifelse(p1.choice=="versicolor",1,2)
+points(x.test.1[1],x.test.1[2],pch="*",cex=3,col=col1)
+text(x.test.1[1],x.test.1[2]+.1,labels=p1.choice,cex=.6,col=col1)
+col2 <- ifelse(p2.choice=="versicolor",1,2)
+points(x.test.2[1],x.test.2[2],pch="*",cex=3,col=col2)
+text(x.test.2[1],x.test.2[2]+.1,labels=p2.choice,cex=.6,col=col2)
+legend("topleft",legend=levels(factor(Y.example)),
+       fill=1:2,cex=.75)
+```
+
+
+# Section V: Modify KNN Function
+
+2) Now to modify **KNN.decision()** so it generalizes to any binary classifier. Technically we will only consider numeric features, i.e., no categorical training data. The modified kNN-function should be able to: (i) train the model for $p>0$ features, and (ii) classify several test cases at once. 
+
+
+```{r}
+KNN.decision.my <- function(train,test,labels,k){
+  if(ncol(train)!=ncol(test)) stop("dims of 'test' and 'train' differ")
+  if(nrow(train)!=length(labels)) stop("'train' and 'class' have different lengths")
+  labels <- as.character(labels)              
+  classify0 <- function(vec){                 
+    diffMat <- matrix(vec,nrow(train),ncol(train),byrow = T) - train
+    distances <- diffMat^2  %>% apply(.,1,sum) %>% sqrt
+    sortedDistIndexes <- order(distances)
+    kMaxDistLabels <- vector(length = k)
+    for(i in 1:k){
+      kMaxDistLabels[i] <- labels[sortedDistIndexes[i]]
+    }
+    predictLabel <- table(kMaxDistLabels) %>% which.max %>% names
+    return(predictLabel)
+  }
+  allPredict <- apply(test,1,classify0)
+  return(allPredict)
+}
+```
+
+
+3) Use kNN function to compute the test error and training error based on the split data from Section III. Choose $K=5$ to compute the test error and training error. 
+
+
+```{r}
+predictions_train<-KNN.decision.my(X.train.zip,X.train.zip,Y.train.zip,5)
+predictions_test<-KNN.decision.my(X.train.zip,X.test.zip,Y.train.zip,5)
+train.error.k5 <- sum( predictions_train != Y.train.zip)/nrow(X.train.zip)
+test.error.k5 <- sum(predictions_test != Y.test.zip)/nrow(X.test.zip)
+```
+
+
+# Section VI: Tuning Parameter
+
+4) Finally compute the training error and test error for several odd values of $k$. Plot both training and test error as a function of $k$. Try choosing values of $k$ at least equal to the vector $1,3,5,7,9,11$.  
+
+```{r}
+K_values <- c(1,3,5,7,9,11)
+num_k <- length(K_values)
+
+error_df <- tibble(k=rep(0, num_k),
+                    tr=rep(0, num_k),
+                    tst=rep(0, num_k))
+
+for(i in 1:num_k){
+    k <- K_values[i]
+
+    error_df[i, 'k'] <- k
+    error_df[i, 'tr'] <- sum( KNN.decision.my(X.train.zip,X.train.zip,Y.train.zip,k) != Y.train.zip)/nrow(X.train.zip)
+    error_df[i, 'tst'] <- sum( KNN.decision.my(X.train.zip,X.test.zip,Y.train.zip,k)!= Y.test.zip)/nrow(X.test.zip)
+}
+
+error_df
+```
+```{r}
+library(tidyr)
+library(ggplot2)
+error_df %>% 
+    gather(key='type', value='error', tr, tst) %>% 
+    ggplot() +
+    geom_point(aes(x=k, y=error, color=type, shape=type)) +
+    geom_line(aes(x=k, y=error, color=type, linetype=type))+theme_light()
+```
+
